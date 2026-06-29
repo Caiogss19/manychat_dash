@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spark Maxx · Análise de Disparos e 1ª Mensagem · WhatsApp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{
+    --bg:#FAF8F3;--bg-paper:#FFF;--bg-soft:#F2EFE7;
+    --ink:#1A1814;--ink-mute:#6B6863;--ink-faint:#A09D96;
+    --rule:#E5E1D5;--rule-strong:#C9C4B5;
+    --crimson:#A8321F;--crimson-soft:#F5E4DF;
+    --amber:#B8722D;--amber-soft:#F5E9D8;
+    --olive:#5C6B3F;--olive-soft:#E5E8D7;
+    --navy:#1F3A5F;--navy-soft:#DDE4EE;
+    --plum:#6B3651;--plum-soft:#EFE0E8;
+    --wa:#25D366;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:Inter,sans-serif;line-height:1.5;padding:32px 24px 64px;max-width:1180px;margin:0 auto}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--crimson);font-weight:600;margin-bottom:10px}
+  h1{font-family:Fraunces,serif;font-weight:400;font-size:38px;line-height:1.08;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{color:var(--ink-mute);font-size:14.5px;max-width:760px}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px}
+  select,button,input[type=search]{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);background:var(--bg-paper);border:1px solid var(--rule-strong);border-radius:8px;padding:8px 12px;cursor:pointer}
+  input[type=search]{cursor:text;min-width:200px}
+  select:focus,button:focus,input:focus{outline:2px solid var(--navy);outline-offset:1px}
+  button:hover,select:hover{background:var(--bg-soft)}
+  button.primary{background:var(--ink);color:#FFF;border-color:var(--ink)}
+  button.primary:hover{background:#000}
+  button.ghost{background:transparent}
+  .meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:.04em}
+  .badge{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--bg-soft);border:1px solid var(--rule);padding:3px 8px;border-radius:20px;color:var(--ink-mute)}
+  hr{border:0;border-top:1px solid var(--rule);margin:28px 0}
+  h2{font-family:Fraunces,serif;font-weight:500;font-size:20px;margin:34px 0 16px;display:flex;align-items:baseline;gap:10px}
+  h2 .n{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-faint);font-weight:500}
+  h2 .h-act{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-mute);font-weight:400}
+  .grid{display:grid;gap:14px}
+  .stages{grid-template-columns:repeat(4,1fr)}
+  .stages-2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:820px){.stages{grid-template-columns:repeat(2,1fr)}.stages-2{grid-template-columns:1fr}}
+  .card{background:var(--bg-paper);border:1px solid var(--rule);border-radius:10px;padding:18px;position:relative}
+  .card .label{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:10px}
+  .card .val{font-family:Fraunces,serif;font-size:36px;font-weight:400;line-height:1}
+  .card .rate{font-size:12.5px;color:var(--ink-mute);margin-top:8px}
+  .card .rate b{color:var(--ink);font-weight:600}
+  .card .step{position:absolute;top:14px;right:16px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint)}
+  .a-cr{border-top:3px solid var(--crimson)}.a-am{border-top:3px solid var(--amber)}
+  .a-ol{border-top:3px solid var(--olive)}.a-nv{border-top:3px solid var(--navy)}.a-pl{border-top:3px solid var(--plum)}
+  .two{grid-template-columns:1fr 1fr}
+  .three{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:820px){.two,.three{grid-template-columns:1fr}}
+  .chartbox{background:var(--bg-paper);border:1px solid var(--rule);border-radius:10px;padding:20px}
+  .chartbox h3{font-family:Inter;font-size:13px;font-weight:600;margin-bottom:4px}
+  .chartbox p{font-size:12px;color:var(--ink-mute);margin-bottom:14px}
+  .canvas-wrap{position:relative;height:260px}
+  .callout{background:var(--olive-soft);border:1px solid #CFD7B8;border-left:3px solid var(--olive);border-radius:8px;padding:16px 18px;font-size:14px;margin-bottom:16px}
+  .callout.warn{background:var(--crimson-soft);border-color:#E8C9C0;border-left-color:var(--crimson)}
+  .callout.info{background:var(--navy-soft);border-color:#C7D2E2;border-left-color:var(--navy)}
+  .callout b{font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--bg-paper);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+  th{text-align:left;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);font-weight:600;padding:11px 14px;background:var(--bg-soft);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:2}
+  td{padding:9px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .pill{font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .p-enviado{background:var(--amber-soft);color:var(--amber)}
+  .p-clique{background:var(--olive-soft);color:var(--olive)}
+  .p-resposta{background:var(--navy-soft);color:var(--navy)}
+  .p-opt_out{background:var(--crimson-soft);color:var(--crimson)}
+  .p-mensagem{background:var(--plum-soft);color:var(--plum)}
+  .p-evento{background:var(--bg-soft);color:var(--ink-mute)}
+  .scroll{max-height:420px;overflow-y:auto;border-radius:10px;border:1px solid var(--rule)}
+  .scroll table{border:0}
+  .note{font-size:12px;color:var(--ink-faint);margin-top:8px;font-style:italic}
+  .empty{color:var(--ink-faint);font-size:13px;padding:24px;text-align:center}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--rule-strong);border-top-color:var(--crimson);border-radius:50%;animation:s .7s linear infinite;vertical-align:-1px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+  .rowclick{cursor:pointer}
+  .rowclick:hover td{background:var(--bg-soft)}
+  .wa-link{color:var(--wa);text-decoration:none;font-weight:600;font-size:11px;font-family:'JetBrains Mono',monospace;padding:2px 6px;border:1px solid var(--wa);border-radius:6px;opacity:.85}
+  .wa-link:hover{opacity:1;background:#E8FCEF}
+  .drawer-ov{position:fixed;inset:0;background:rgba(26,24,20,.38);display:none;z-index:50}
+  .drawer-ov.open{display:block}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(460px,92vw);background:var(--bg);border-left:1px solid var(--rule-strong);box-shadow:-12px 0 40px rgba(0,0,0,.12);transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;z-index:51}
+  .drawer.open{transform:translateX(0)}
+  @media (prefers-reduced-motion:reduce){.drawer{transition:none}}
+  .drawer-head{padding:18px 20px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;background:var(--bg-paper)}
+  .drawer-head h3{font-family:Fraunces,serif;font-weight:500;font-size:20px}
+  .drawer-head .dmeta{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--ink-mute);margin-top:4px}
+  .drawer-head .dactions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .dclose{font-family:"JetBrains Mono",monospace;font-size:16px;line-height:1;border:1px solid var(--rule-strong);background:var(--bg);border-radius:8px;padding:5px 10px;cursor:pointer;color:var(--ink-mute)}
+  .dclose:hover{background:var(--bg-soft)}
+  .thread{flex:1;overflow-y:auto;padding:18px 18px 28px;display:flex;flex-direction:column;gap:10px}
+  .brow{display:flex}
+  .brow.lead{justify-content:flex-end}
+  .bubble{max-width:80%;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.42;word-wrap:break-word;overflow-wrap:anywhere}
+  .bubble.bot{background:var(--bg-paper);border:1px solid var(--rule);border-bottom-left-radius:4px}
+  .bubble.lead{background:#DCF8C6;border:1px solid #C7EBA8;border-bottom-right-radius:4px}
+  .btime{font-family:"JetBrains Mono",monospace;font-size:9.5px;color:var(--ink-faint);margin-top:5px;text-align:right}
+  .bsys{align-self:center;font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--ink-faint);background:var(--bg-soft);border-radius:20px;padding:3px 10px}
+  .dempty{color:var(--ink-faint);font-size:13px;text-align:center;padding:30px 18px}
+  .tabs{display:inline-flex;background:var(--bg-soft);border:1px solid var(--rule);border-radius:9px;padding:3px;gap:3px}
+  .tab{border:0;background:transparent;border-radius:7px;padding:6px 12px;font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--ink-mute);cursor:pointer}
+  .tab.active{background:var(--bg-paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .seg{display:inline-flex;background:var(--bg-paper);border:1px solid var(--rule-strong);border-radius:8px;overflow:hidden}
+  .seg button{border:0;border-radius:0;padding:7px 10px;font-size:11px}
+  .seg button.active{background:var(--ink);color:#FFF}
+  .switch{display:inline-flex;gap:6px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-mute)}
+  .switch input{accent-color:var(--crimson)}
+  .heat{display:grid;gap:2px;grid-template-columns:46px repeat(24,1fr);font-family:'JetBrains Mono',monospace;font-size:9px}
+  .heat .hh{display:flex;align-items:center;justify-content:center;color:var(--ink-faint);height:16px}
+  .heat .lbl{display:flex;align-items:center;color:var(--ink-mute);padding-right:6px;font-size:10px;height:22px}
+  .heat .cell{height:22px;border-radius:2px;background:var(--bg-soft);position:relative}
+  .heat .cell:hover{outline:1px solid var(--ink)}
+  .heat .cell .tip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--ink);color:#FFF;padding:3px 6px;border-radius:4px;white-space:nowrap;font-size:10px;z-index:3;pointer-events:none}
+  .heat .cell:hover .tip{display:block}
+  .legend{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-mute);margin-top:10px}
+  .legend .sw{display:inline-block;width:14px;height:10px;border-radius:2px}
+  .tag-chip{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--bg-soft);border:1px solid var(--rule);padding:2px 7px;border-radius:20px;margin:0 4px 4px 0;color:var(--ink-mute)}
+  .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .kpi-sub{display:inline-block;font-size:11px;color:var(--ink-mute);background:var(--bg-soft);padding:2px 8px;border-radius:6px;margin-top:4px;margin-right:4px;font-family:'JetBrains Mono',monospace}
+  .delta-up{color:var(--olive)}.delta-down{color:var(--crimson)}.delta-flat{color:var(--ink-faint)}
+</style>
+</head>
+<body>
+  <div class="eyebrow">Spark Maxx · Growth Ops · WhatsApp</div>
+  <h1>Análise de Disparos &amp; 1ª Mensagem</h1>
+  <p class="sub">Performance dos disparos ManyChat (WhatsApp) e das primeiras mensagens inbound de leads — funil <b>envio → clique → resposta</b>, tempo de resposta, qualificação no flow, heatmap de horário e conversa completa por contato. Dados ao vivo do Supabase (<span class="mono" style="font-size:12px">disparos · disparo_eventos · disparo_contatos</span>).</p>
+
+  <div class="controls">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-aba="disparo">Disparo (bot iniciou)</button>
+      <button class="tab" data-aba="inbound">1ª mensagem (lead iniciou)</button>
+      <button class="tab" data-aba="todos">Todos</button>
+    </div>
+    <label class="meta" for="selDisparo">disparo:</label>
+    <select id="selDisparo"><option value="__all__">Todos</option></select>
+    <div class="seg" id="segRange" title="Janela de tempo">
+      <button data-range="24h">24h</button>
+      <button data-range="7d" class="active">7d</button>
+      <button data-range="30d">30d</button>
+      <button data-range="all">tudo</button>
+    </div>
+    <button id="btnRefresh">↻ Atualizar</button>
+    <label class="switch"><input type="checkbox" id="chkAuto"> auto-refresh 60s</label>
+    <span class="meta" id="status">carregando <span class="spin"></span></span>
+  </div>
+
+  <div id="errBox"></div>
+
+  <hr>
+
+  <h2><span class="n">01</span> Funil de conversão <span class="h-act" id="funnelMeta"></span></h2>
+  <div class="grid stages">
+    <div class="card a-am"><span class="step">passo 1</span><div class="label" id="lbEnviados">Enviados</div><div class="val" id="kEnviados">—</div><div class="rate" id="rEnviados">contatos no disparo</div></div>
+    <div class="card a-ol"><span class="step">passo 2</span><div class="label">Clicaram</div><div class="val" id="kClicaram">—</div><div class="rate" id="rClicaram">—</div></div>
+    <div class="card a-nv"><span class="step">passo 3</span><div class="label">Responderam</div><div class="val" id="kResponderam">—</div><div class="rate" id="rResponderam">—</div></div>
+    <div class="card a-cr"><span class="step">saída</span><div class="label">Opt-out</div><div class="val" id="kOptout">—</div><div class="rate" id="rOptout">—</div></div>
+  </div>
+
+  <div class="grid three" style="margin-top:14px">
+    <div class="card a-pl"><span class="step">∅</span><div class="label">Tempo médio até clique</div><div class="val" id="kTtc">—</div><div class="rate" id="rTtc">do envio ao 1º clique</div></div>
+    <div class="card a-nv"><span class="step">∅</span><div class="label">Tempo médio até resposta</div><div class="val" id="kTtr">—</div><div class="rate" id="rTtr">do envio ao 1º texto</div></div>
+    <div class="card a-ol"><span class="step">%</span><div class="label">Engajamento total</div><div class="val" id="kEng">—</div><div class="rate" id="rEng">clicou ou respondeu</div></div>
+  </div>
+
+  <div class="grid two" style="margin-top:14px">
+    <div class="chartbox">
+      <h3>Funil do disparo</h3>
+      <p>Quantos avançam em cada etapa, do envio à resposta.</p>
+      <div class="canvas-wrap"><canvas id="cFunnel"></canvas></div>
+    </div>
+    <div class="chartbox">
+      <h3>Taxa de passagem entre etapas</h3>
+      <p>Percentual que avança de uma etapa para a seguinte.</p>
+      <div class="canvas-wrap"><canvas id="cStep"></canvas></div>
+    </div>
+  </div>
+
+  <h2><span class="n">02</span> Funil por etapa da automação</h2>
+  <div class="callout info"><b>Quantos contatos chegaram em cada parte do flow.</b> As etapas são ordenadas pela primeira ocorrência (ordem cronológica). Cada barra conta contatos <b>únicos</b> que passaram pela etapa.</div>
+  <div class="chartbox">
+    <h3>Contatos por etapa</h3>
+    <p>Alcance de cada passo do flow, do topo ao fim.</p>
+    <div class="canvas-wrap" id="wrapStep" style="height:300px"><canvas id="cEtapas"></canvas></div>
+  </div>
+  <div class="scroll" style="margin-top:14px">
+    <table>
+      <thead><tr><th>Etapa</th><th>Chegaram</th><th>% do topo</th><th>Queda vs anterior</th><th>Cliques</th><th>Respostas</th><th>Tempo médio até próxima</th></tr></thead>
+      <tbody id="tbEtapas"><tr><td colspan="7" class="empty">carregando…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="note">"Chegaram" = contatos únicos com ao menos 1 evento na etapa (campo <span class="mono" style="font-size:11.5px">passo</span>, vindo de <span class="mono" style="font-size:11.5px">flow_ns</span> no ManyChat).</p>
+
+  <h2><span class="n">03</span> Engajamento &amp; horário</h2>
+  <div class="grid two">
+    <div class="chartbox">
+      <h3>Eventos por tipo</h3>
+      <p>Volume registrado no log do disparo dentro da janela.</p>
+      <div class="canvas-wrap" style="height:240px"><canvas id="cTipo"></canvas></div>
+    </div>
+    <div class="chartbox">
+      <h3>Eventos ao longo do tempo</h3>
+      <p>Atividade por hora desde o início da janela.</p>
+      <div class="canvas-wrap" style="height:240px"><canvas id="cTempo"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chartbox" style="margin-top:14px">
+    <h3>Heatmap dia da semana × hora</h3>
+    <p>Quando acontecem mais eventos. Útil para escolher janela de disparo.</p>
+    <div id="heatmap" class="heat"></div>
+    <div class="legend">
+      <span>menos</span>
+      <span class="sw" style="background:#F2EFE7"></span>
+      <span class="sw" style="background:#E5D2C9"></span>
+      <span class="sw" style="background:#D08B73"></span>
+      <span class="sw" style="background:#A8321F"></span>
+      <span>mais</span>
+    </div>
+  </div>
+
+  <h2><span class="n">04</span> Conteúdo: respostas &amp; botões</h2>
+  <div class="grid two">
+    <div class="chartbox">
+      <h3>Top botões clicados</h3>
+      <p>Quais CTAs mais convertem em clique.</p>
+      <div class="canvas-wrap" style="height:240px"><canvas id="cBotoes"></canvas></div>
+    </div>
+    <div class="chartbox">
+      <h3>Top respostas (texto livre)</h3>
+      <p>Textos mais frequentes nas respostas dos leads.</p>
+      <div class="canvas-wrap" style="height:240px"><canvas id="cRespostas"></canvas></div>
+    </div>
+  </div>
+
+  <h2><span class="n">05</span> Perfil dos contatos</h2>
+  <div class="grid two">
+    <div class="chartbox">
+      <h3>Top tags no ManyChat</h3>
+      <p>Tags mais frequentes entre os contatos da janela.</p>
+      <div class="canvas-wrap" style="height:260px"><canvas id="cTags"></canvas></div>
+    </div>
+    <div class="chartbox">
+      <h3>Status do subscriber</h3>
+      <p>Situação no ManyChat.</p>
+      <div class="canvas-wrap" style="height:260px"><canvas id="cStatus"></canvas></div>
+    </div>
+  </div>
+
+  <h2><span class="n">06</span> Contatos do disparo <span class="h-act"><span id="ctTotal" class="badge">0</span></span></h2>
+  <div class="toolbar">
+    <input type="search" id="qContatos" placeholder="buscar nome, telefone ou tag…">
+    <div class="seg" id="segCt">
+      <button data-flt="all" class="active">todos</button>
+      <button data-flt="resp">responderam</button>
+      <button data-flt="cli">clicaram</button>
+      <button data-flt="opt">opt-out</button>
+      <button data-flt="silent">só enviado</button>
+    </div>
+    <button id="btnCsv" class="ghost">↓ exportar CSV</button>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Nome</th><th>Telefone</th><th>Status</th><th>Engajamento</th><th>Último evento</th><th></th></tr></thead>
+      <tbody id="tbContatos"><tr><td colspan="6" class="empty">carregando…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="note" id="noteContatos"></p>
+
+  <h2><span class="n">07</span> Qualificação — respostas no flow</h2>
+  <p class="sub" style="margin-bottom:12px">O que cada lead respondeu ou preencheu ao longo da automação (custom fields do ManyChat). Mais relevante na aba <b>1ª mensagem</b>.</p>
+  <div class="scroll">
+    <table>
+      <thead id="thQual"></thead>
+      <tbody id="tbQual"><tr><td class="empty">carregando…</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2><span class="n">08</span> Eventos recentes</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Quando</th><th>Evento</th><th>Etapa</th><th>Subscriber</th><th>Detalhe</th></tr></thead>
+      <tbody id="tbEventos"><tr><td colspan="5" class="empty">carregando…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="drawer-ov" id="drawerOv"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div style="flex:1">
+        <h3 id="dName">Contato</h3>
+        <div class="dmeta" id="dMeta"></div>
+        <div class="dactions" id="dActions"></div>
+      </div>
+      <button class="dclose" id="dClose" aria-label="Fechar conversa">✕</button>
+    </div>
+    <div class="thread" id="dThread"></div>
+  </aside>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://epkxxiadrevsuopkndej.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwa3h4aWFkcmV2c3VvcGtuZGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMzE3ODgsImV4cCI6MjA4ODYwNzc4OH0.2s96uKg70wQtMza_CoZE3HzorDgcFyEsC-YnZswQ3lU';
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+const STATE = {
+  aba: 'disparo',
+  disparo: '__all__',
+  range: '7d',
+  contatoFilt: 'all',
+  search: '',
+  contatos: [],
+  eventos: [],
+  autoTimer: null,
+};
+
+// ─── DESIGN TOKENS ──────────────────────────────────────────────────────────
+const C={cr:'#A8321F',am:'#B8722D',ol:'#5C6B3F',nv:'#1F3A5F',pl:'#6B3651',faint:'#C9C4B5'};
+const mute='#6B6863',rule='#E5E1D5';
+Chart.defaults.font.family='Inter';Chart.defaults.font.size=12;Chart.defaults.color=mute;
+
+const charts={};
+function paint(id,cfg){ if(charts[id])charts[id].destroy(); charts[id]=new Chart(document.getElementById(id),cfg); }
+
+// ─── UTIL ───────────────────────────────────────────────────────────────────
+const pct=(a,b)=>b?Math.round(a/b*1000)/10:0;
+function fmtDate(s){ if(!s)return '—'; const d=new Date(s); return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+function fmtDur(ms){
+  if(!ms||!isFinite(ms)||ms<0) return '—';
+  const s=Math.round(ms/1000);
+  if(s<60) return s+'s';
+  const m=Math.round(s/60);
+  if(m<60) return m+'min';
+  const h=Math.round(m/6)/10;
+  return h+'h';
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function rangeStartISO(){
+  const now=new Date();
+  if(STATE.range==='24h') return new Date(now-86400e3).toISOString();
+  if(STATE.range==='7d')  return new Date(now-7*86400e3).toISOString();
+  if(STATE.range==='30d') return new Date(now-30*86400e3).toISOString();
+  return null;
+}
+function waLink(phone){ if(!phone) return ''; return 'https://wa.me/'+String(phone).replace(/\D/g,''); }
+
+async function rest(path){
+  const sep = path.includes('?') ? '&' : '?';
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}${sep}_ts=${Date.now()}`,{cache:'no-store',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}});
+  if(!r.ok) throw new Error(`${r.status} · ${await r.text()}`);
+  return r.json();
+}
+
+function showError(msg){
+  document.getElementById('errBox').innerHTML=
+    `<div class="callout warn" style="margin-top:18px"><b>Não consegui carregar os dados.</b> ${esc(msg)}<br>Verifique se as tabelas existem no Supabase e se a leitura anônima está liberada.</div>`;
+}
+
+function labelEvento(ev){ return ({enviado:'mensagem enviada',clique:'clicou em botão',opt_out:'saiu / opt-out',mensagem:'mensagem',resposta:'resposta',evento:'evento'})[ev]||ev||'evento'; }
+
+// ─── DRAWER ────────────────────────────────────────────────────────────────
+function bubbleHtml(e){
+  const dir = e.direcao || ((e.evento==='resposta'||e.evento==='clique'||e.evento==='opt_out')?'lead':'bot');
+  let txt = e.mensagem || e.resposta_texto || (e.botao?('▸ '+e.botao):'');
+  if(e.evento==='opt_out' && !e.mensagem) txt='(saiu / opt-out)';
+  if(!txt) return `<div class="brow" style="justify-content:center"><div class="bsys">${esc(labelEvento(e.evento))}${e.passo?' · '+esc(e.passo):''}</div></div>`;
+  return `<div class="brow ${dir}"><div class="bubble ${dir}">${esc(txt)}<div class="btime">${fmtDate(e.criado_em)}${e.passo?' · '+esc(e.passo):''}</div></div></div>`;
+}
+function openDrawer(name,meta,phone){
+  document.getElementById('dName').textContent=name||'Contato';
+  document.getElementById('dMeta').textContent=meta||'';
+  const acts=document.getElementById('dActions');
+  acts.innerHTML='';
+  if(phone){
+    const a=document.createElement('a'); a.className='wa-link'; a.href=waLink(phone); a.target='_blank'; a.rel='noopener'; a.textContent='abrir no WhatsApp';
+    acts.appendChild(a);
+    const b=document.createElement('button'); b.className='wa-link'; b.style.background='transparent'; b.style.color='var(--ink-mute)'; b.style.borderColor='var(--rule-strong)'; b.textContent='copiar telefone';
+    b.onclick=()=>{ navigator.clipboard?.writeText(phone); b.textContent='copiado ✓'; setTimeout(()=>b.textContent='copiar telefone',1400); };
+    acts.appendChild(b);
+  }
+  document.getElementById('drawerOv').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer').setAttribute('aria-hidden','false');
+}
+function closeDrawer(){
+  document.getElementById('drawerOv').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer').setAttribute('aria-hidden','true');
+}
+async function openThread(sid,name,meta,phone){
+  openDrawer(name,meta,phone);
+  document.getElementById('dThread').innerHTML='<div class="dempty">carregando conversa…</div>';
+  try{
+    const rows=await rest(`disparo_eventos?subscriber_id=eq.${encodeURIComponent(sid)}&select=evento,passo,direcao,mensagem,botao,resposta_texto,criado_em&order=criado_em.asc`);
+    document.getElementById('dThread').innerHTML=(rows&&rows.length)?rows.map(bubbleHtml).join(''):'<div class="dempty">Sem mensagens registradas para este contato ainda.</div>';
+    document.getElementById('dThread').scrollTop=document.getElementById('dThread').scrollHeight;
+  }catch(e){ document.getElementById('dThread').innerHTML=`<div class="dempty">Não consegui carregar a conversa.<br>${esc(e.message)}</div>`; }
+}
+
+// ─── DATA HELPERS ──────────────────────────────────────────────────────────
+function tagList(contatos){
+  const m={};
+  contatos.forEach(c=>{ (c.tags||[]).forEach(t=>{ const n=(t&&t.name)||t; if(n){ m[n]=(m[n]||0)+1; } }); });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8);
+}
+function statusDist(contatos){
+  const m={};
+  contatos.forEach(c=>{ const s=c.status||'desconhecido'; m[s]=(m[s]||0)+1; });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+}
+function eventsByType(eventos){
+  const order=['enviado','clique','resposta','opt_out','mensagem'];
+  const m={};
+  eventos.forEach(e=>{ const k=e.evento||'evento'; m[k]=(m[k]||0)+1; });
+  const keys=[...new Set([...order.filter(k=>m[k]),...Object.keys(m).filter(k=>!order.includes(k))])];
+  return keys.map(k=>[k,m[k]]);
+}
+function eventsByHour(eventos){
+  const m={};
+  eventos.forEach(e=>{ const d=new Date(e.criado_em); d.setMinutes(0,0,0); const k=d.toISOString(); m[k]=(m[k]||0)+1; });
+  return Object.entries(m).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+}
+function stepFunnel(eventos){
+  const steps={};
+  eventos.forEach(e=>{
+    const p=(e.passo||'').trim()||'(sem etapa)';
+    if(!steps[p]) steps[p]={subs:new Set(),times:[],first:e.criado_em,cl:0,resp:0};
+    const s=steps[p];
+    s.subs.add(e.subscriber_id);
+    s.times.push(new Date(e.criado_em).getTime());
+    if(new Date(e.criado_em)<new Date(s.first)) s.first=e.criado_em;
+    if(e.evento==='clique') s.cl++;
+    if(e.evento==='resposta') s.resp++;
+  });
+  const arr=Object.entries(steps)
+    .map(([p,s])=>({passo:p,chegaram:s.subs.size,first:s.first,times:s.times.sort((a,b)=>a-b),cl:s.cl,resp:s.resp}))
+    .sort((a,b)=>new Date(a.first)-new Date(b.first));
+  for(let i=0;i<arr.length-1;i++){
+    const cur=arr[i].times, nxt=arr[i+1].times;
+    const min=Math.min(cur.length,nxt.length);
+    const gaps=[];
+    for(let j=0;j<min;j++){ const g=nxt[j]-cur[j]; if(g>0&&g<7*86400e3) gaps.push(g); }
+    arr[i].gapMs = gaps.length ? gaps.reduce((a,b)=>a+b,0)/gaps.length : null;
+  }
+  return arr;
+}
+function topBotoes(eventos){
+  const m={};
+  eventos.forEach(e=>{ if(e.botao){ m[e.botao]=(m[e.botao]||0)+1; } });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8);
+}
+function topRespostas(eventos){
+  const m={};
+  eventos.forEach(e=>{ const t=(e.resposta_texto||(e.evento==='resposta'?e.mensagem:'')||'').trim(); if(t){ const k=t.length>40?t.slice(0,40)+'…':t; m[k]=(m[k]||0)+1; } });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8);
+}
+function tempoMedio(contatos,eventos,tipoAlvo){
+  const enviosBySub={};
+  eventos.forEach(e=>{ if(e.evento==='enviado'){ const t=new Date(e.criado_em).getTime(); if(!(e.subscriber_id in enviosBySub)||t<enviosBySub[e.subscriber_id]) enviosBySub[e.subscriber_id]=t; } });
+  const respBySub={};
+  eventos.forEach(e=>{ if(e.evento===tipoAlvo){ const t=new Date(e.criado_em).getTime(); if(!(e.subscriber_id in respBySub)||t<respBySub[e.subscriber_id]) respBySub[e.subscriber_id]=t; } });
+  const gaps=[];
+  Object.keys(respBySub).forEach(sid=>{ if(sid in enviosBySub){ const g=respBySub[sid]-enviosBySub[sid]; if(g>0&&g<7*86400e3) gaps.push(g); } });
+  if(!gaps.length) return null;
+  return gaps.reduce((a,b)=>a+b,0)/gaps.length;
+}
+function heatmapData(eventos){
+  const grid=Array.from({length:7},()=>Array(24).fill(0));
+  let max=0;
+  eventos.forEach(e=>{ const d=new Date(e.criado_em); const dw=d.getDay(); const hh=d.getHours(); grid[dw][hh]++; if(grid[dw][hh]>max) max=grid[dw][hh]; });
+  return {grid,max};
+}
+function heatColor(v,max){
+  if(!v) return '#F2EFE7';
+  const t=Math.min(1,v/max);
+  if(t<.25) return '#F3E0D7';
+  if(t<.5)  return '#E5C2B1';
+  if(t<.75) return '#CE8E73';
+  return '#A8321F';
+}
+function renderHeat(eventos){
+  const {grid,max}=heatmapData(eventos);
+  const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let html='<div class="hh"></div>';
+  for(let h=0;h<24;h++) html+=`<div class="hh">${h}h</div>`;
+  for(let d=0;d<7;d++){
+    html+=`<div class="lbl">${dias[d]}</div>`;
+    for(let h=0;h<24;h++){
+      const v=grid[d][h];
+      html+=`<div class="cell" style="background:${heatColor(v,max)}"><span class="tip">${dias[d]} ${h}h · ${v} ${v===1?'evento':'eventos'}</span></div>`;
+    }
+  }
+  document.getElementById('heatmap').innerHTML=html;
+}
+
+// ─── FILTROS ───────────────────────────────────────────────────────────────
+function applyAbaFilter(contatos,eventos){
+  if(STATE.aba==='todos') return {contatos,eventos};
+  const firstDir={};
+  [...eventos].sort((a,b)=>new Date(a.criado_em)-new Date(b.criado_em)).forEach(e=>{
+    if(!(e.subscriber_id in firstDir)) firstDir[e.subscriber_id]= e.direcao || ((e.evento==='resposta'||e.evento==='clique')?'lead':'bot');
+  });
+  const isInbound=c=>((c.iniciou_por||firstDir[c.subscriber_id])==='lead');
+  const cs = contatos.filter(c=> STATE.aba==='inbound' ? isInbound(c) : !isInbound(c));
+  const subs = new Set(cs.map(c=>c.subscriber_id));
+  return {contatos:cs, eventos:eventos.filter(e=>subs.has(e.subscriber_id))};
+}
+
+function buildContatoRows(contatos){
+  const q=STATE.search.trim().toLowerCase();
+  const flt=STATE.contatoFilt;
+  return contatos.filter(c=>{
+    if(flt==='resp' && !c.respondeu) return false;
+    if(flt==='cli' && !c.clicou) return false;
+    if(flt==='opt' && !c.optout) return false;
+    if(flt==='silent' && (c.respondeu||c.clicou||c.optout)) return false;
+    if(!q) return true;
+    const hay=[(c.nome||''),(c.phone||''),(c.status||''),(c.tags||[]).map(t=>t.name||t).join(' ')].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
+
+// ─── RENDER TABELAS ────────────────────────────────────────────────────────
+function renderContatos(){
+  const all=STATE.contatos;
+  const list=buildContatoRows(all);
+  const tb=document.getElementById('tbContatos');
+  const flags=c=>{
+    const f=[];
+    if(c.respondeu)f.push('<span class="pill p-resposta">respondeu</span>');
+    if(c.clicou)f.push('<span class="pill p-clique">clicou</span>');
+    if(c.optout)f.push('<span class="pill p-opt_out">opt-out</span>');
+    if(!f.length)f.push('<span class="pill p-evento">só enviado</span>');
+    return f.join(' ');
+  };
+  if(!list.length){ tb.innerHTML='<tr><td colspan="6" class="empty">Nenhum contato neste filtro.</td></tr>'; }
+  else{
+    tb.innerHTML=list
+      .sort((a,b)=>{
+        const ta=a.ultimo_evento_em?new Date(a.ultimo_evento_em):0;
+        const tb=b.ultimo_evento_em?new Date(b.ultimo_evento_em):0;
+        return tb-ta;
+      })
+      .map(c=>{
+        const sid=esc(c.subscriber_id);
+        const nome=esc(c.nome||'—');
+        const meta=esc((c.status||'—')+' · '+(c.phone||''));
+        const phone=esc(c.phone||'');
+        return `<tr class="rowclick" data-sid="${sid}" data-nome="${nome}" data-meta="${meta}" data-phone="${phone}">
+          <td>${nome}</td>
+          <td class="mono" style="font-size:12px">${esc(c.phone||'—')}</td>
+          <td>${esc(c.status||'—')}</td>
+          <td>${flags(c)}</td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-mute)">${fmtDate(c.ultimo_evento_em)} · ${esc(c.ultimo_evento||'—')}</td>
+          <td>${c.phone?`<a class="wa-link" href="${waLink(c.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">WA</a>`:''}</td>
+        </tr>`;
+      }).join('');
+  }
+  document.getElementById('ctTotal').textContent=`${list.length}/${all.length}`;
+  document.getElementById('noteContatos').textContent=`${all.length} contato(s) na janela · ${all.filter(c=>c.clicou).length} clicaram · ${all.filter(c=>c.respondeu).length} responderam · ${all.filter(c=>c.optout).length} opt-out.`;
+}
+
+function renderQualificacao(contatos){
+  const freq={};
+  contatos.forEach(c=>(c.custom_fields||[]).forEach(f=>{ if(f&&f.name) freq[f.name]=(freq[f.name]||0)+1; }));
+  const cols=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+  const thead=document.getElementById('thQual'), tb=document.getElementById('tbQual');
+  if(!cols.length){ thead.innerHTML=''; tb.innerHTML='<tr><td class="empty">Nenhuma resposta / custom field registrada neste grupo ainda.</td></tr>'; return; }
+  thead.innerHTML='<tr><th>Nome</th><th>Telefone</th>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr>';
+  tb.innerHTML=contatos.filter(c=>(c.custom_fields||[]).some(f=>f&&f.name)).map(c=>{
+    const map={}; (c.custom_fields||[]).forEach(f=>{ if(f&&f.name) map[f.name]=f.value; });
+    const cells=cols.map(col=>`<td>${(map[col]!=null&&map[col]!=='')?esc(map[col]):'<span style=\'color:var(--ink-faint)\'>—</span>'}</td>`).join('');
+    return `<tr class="rowclick" data-sid="${esc(c.subscriber_id)}" data-nome="${esc(c.nome||'—')}" data-meta="${esc((c.status||'—')+' · '+(c.phone||''))}" data-phone="${esc(c.phone||'')}"><td>${esc(c.nome||'—')}</td><td class="mono" style="font-size:11.5px">${esc(c.phone||'—')}</td>${cells}</tr>`;
+  }).join('') || '<tr><td colspan="'+(cols.length+2)+'" class="empty">Nenhum lead com custom field nesta janela.</td></tr>';
+}
+
+function renderEventos(){
+  const te=document.getElementById('tbEventos');
+  const eventos=STATE.eventos;
+  if(!eventos.length){ te.innerHTML='<tr><td colspan="5" class="empty">Nenhum evento registrado nesta janela.</td></tr>'; return; }
+  te.innerHTML=eventos.slice(0,250).map(e=>{
+    const det=e.resposta_texto||e.mensagem||e.botao||'';
+    return `<tr><td class="mono" style="font-size:11.5px">${fmtDate(e.criado_em)}</td><td><span class="pill p-${(e.evento||'evento').replace(/[^a-z_]/gi,'')}">${esc(e.evento||'evento')}</span></td><td class="mono" style="font-size:11.5px;color:var(--ink-mute)">${esc(e.passo||'—')}</td><td class="mono" style="font-size:11.5px">${esc(e.subscriber_id||'—')}</td><td>${det?`<span style="color:var(--ink-mute)">${esc(det)}</span>`:'—'}</td></tr>`;
+  }).join('');
+}
+
+// ─── CSV ───────────────────────────────────────────────────────────────────
+function exportCsv(){
+  const list=buildContatoRows(STATE.contatos);
+  const rows=[['nome','phone','status','enviado','clicou','respondeu','optout','primeiro_evento_em','ultimo_evento_em','ultimo_evento','tags']];
+  list.forEach(c=>{
+    rows.push([
+      c.nome||'',
+      c.phone||'',
+      c.status||'',
+      c.enviado?'sim':'',
+      c.clicou?'sim':'',
+      c.respondeu?'sim':'',
+      c.optout?'sim':'',
+      c.primeiro_evento_em||'',
+      c.ultimo_evento_em||'',
+      c.ultimo_evento||'',
+      (c.tags||[]).map(t=>t.name||t).join('|')
+    ]);
+  });
+  const csv=rows.map(r=>r.map(v=>{const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`contatos_${STATE.aba}_${STATE.disparo==='__all__'?'todos':STATE.disparo}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ─── LOAD ──────────────────────────────────────────────────────────────────
+async function loadDisparos(){
+  try{
+    const rows=await rest('disparos?select=disparo_id,nome,canal,criado_em&order=criado_em.desc');
+    const sel=document.getElementById('selDisparo');
+    sel.innerHTML='<option value="__all__">Todos</option>';
+    rows.forEach(d=>{ const o=document.createElement('option'); o.value=d.disparo_id; o.textContent=(d.nome?`${d.nome} (${d.disparo_id})`:d.disparo_id)+(d.canal?` · ${d.canal}`:''); sel.appendChild(o); });
+  }catch(e){ /* fica só "Todos" */ }
+}
+
+async function load(){
+  const filt = STATE.disparo==='__all__' ? '' : `&disparo_id=eq.${encodeURIComponent(STATE.disparo)}`;
+  const since = rangeStartISO();
+  const sinceEv = since ? `&criado_em=gte.${encodeURIComponent(since)}` : '';
+  const sinceCt = since ? `&ultimo_evento_em=gte.${encodeURIComponent(since)}` : '';
+
+  document.getElementById('status').innerHTML='atualizando <span class="spin"></span>';
+  document.getElementById('errBox').innerHTML='';
+  try{
+    let [contatos,eventos]=await Promise.all([
+      rest(`disparo_contatos?select=*${filt}${sinceCt}&order=ultimo_evento_em.desc&limit=2000`),
+      rest(`disparo_eventos?select=id,subscriber_id,phone,evento,passo,direcao,botao,resposta_texto,mensagem,criado_em${filt}${sinceEv}&order=criado_em.desc&limit=4000`)
+    ]);
+
+    const f=applyAbaFilter(contatos,eventos);
+    contatos=f.contatos; eventos=f.eventos;
+    STATE.contatos=contatos; STATE.eventos=eventos;
+
+    // ── KPIs ──
+    document.getElementById('lbEnviados').textContent = STATE.aba==='inbound' ? 'Iniciaram' : 'Enviados';
+    const tot=contatos.length;
+    const enviadosFlag=contatos.filter(c=>c.enviado).length;
+    const enviados= STATE.aba==='inbound' ? tot : (enviadosFlag||tot);
+    const clicaram=contatos.filter(c=>c.clicou).length;
+    const responderam=contatos.filter(c=>c.respondeu).length;
+    const optout=contatos.filter(c=>c.optout).length;
+
+    document.getElementById('kEnviados').textContent=enviados;
+    document.getElementById('rEnviados').innerHTML=`<b>${tot}</b> contatos na janela`;
+    document.getElementById('kClicaram').textContent=clicaram;
+    document.getElementById('rClicaram').innerHTML=`<b>${pct(clicaram,enviados)}%</b> dos enviados`;
+    document.getElementById('kResponderam').textContent=responderam;
+    document.getElementById('rResponderam').innerHTML=`<b>${pct(responderam,enviados)}%</b> dos enviados`;
+    document.getElementById('kOptout').textContent=optout;
+    document.getElementById('rOptout').innerHTML=`<b>${pct(optout,enviados)}%</b> dos enviados`;
+
+    const ttc=tempoMedio(contatos,eventos,'clique');
+    const ttr=tempoMedio(contatos,eventos,'resposta');
+    document.getElementById('kTtc').textContent= ttc?fmtDur(ttc):'—';
+    document.getElementById('kTtr').textContent= ttr?fmtDur(ttr):'—';
+    const eng=contatos.filter(c=>c.clicou||c.respondeu).length;
+    document.getElementById('kEng').textContent= pct(eng,tot)+'%';
+    document.getElementById('rEng').innerHTML=`<b>${eng}</b> de ${tot} contatos`;
+
+    document.getElementById('funnelMeta').textContent = since ? `desde ${fmtDate(since)}` : 'janela: tudo';
+
+    // ── Funnel ──
+    paint('cFunnel',{type:'bar',data:{labels: STATE.aba==='inbound'?['Iniciaram','Clique','Resposta']:['Enviado','Clique','Resposta'],
+      datasets:[{data:[enviados,clicaram,responderam],backgroundColor:[C.am,C.ol,C.nv],borderRadius:6}]},
+      options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' contatos'}}},
+        scales:{x:{grid:{color:rule},beginAtZero:true},y:{grid:{display:false}}}}});
+
+    paint('cStep',{type:'bar',data:{labels:['Envio→Clique','Clique→Resposta','Envio→Resposta'],
+      datasets:[{data:[pct(clicaram,enviados),pct(responderam,clicaram),pct(responderam,enviados)],backgroundColor:[C.ol,C.nv,C.pl],borderRadius:6}]},
+      options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+'%'}}},
+        scales:{y:{grid:{color:rule},ticks:{callback:v=>v+'%'},max:100,beginAtZero:true},x:{grid:{display:false}}}}});
+
+    // ── Funil por etapa ──
+    const steps=stepFunnel(eventos);
+    const topo=steps.length?steps[0].chegaram:0;
+    const stepColors=steps.map((s,i)=>[C.am,C.ol,C.nv,C.pl,C.cr][i%5]);
+    document.getElementById('wrapStep').style.height=Math.max(300,steps.length*44)+'px';
+    paint('cEtapas',{type:'bar',data:{labels:steps.map(s=>s.passo),
+      datasets:[{data:steps.map(s=>s.chegaram),backgroundColor:stepColors,borderRadius:6}]},
+      options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} contatos · ${pct(c.raw,topo)}% do topo`}}},
+        scales:{x:{grid:{color:rule},beginAtZero:true},y:{grid:{display:false}}}}});
+    const tEt=document.getElementById('tbEtapas');
+    if(!steps.length){ tEt.innerHTML='<tr><td colspan="7" class="empty">Nenhuma etapa registrada nesta janela. Inclua "passo" (ex.: {{flow_ns}}) nos External Requests do ManyChat.</td></tr>'; }
+    else{
+      tEt.innerHTML=steps.map((s,i)=>{
+        const prev=i>0?steps[i-1].chegaram:s.chegaram;
+        const queda=i>0&&prev?Math.round((1-s.chegaram/prev)*1000)/10:0;
+        const quedaTxt=i===0?'—':(queda>0?`<span class="delta-down">−${queda}%</span>`:`<span class="delta-up">0%</span>`);
+        return `<tr><td>${esc(s.passo)}</td><td><b>${s.chegaram}</b></td><td>${pct(s.chegaram,topo)}%</td><td>${quedaTxt}</td><td>${s.cl||'—'}</td><td>${s.resp||'—'}</td><td class="mono" style="font-size:11.5px;color:var(--ink-mute)">${s.gapMs?fmtDur(s.gapMs):'—'}</td></tr>`;
+      }).join('');
+    }
+
+    // ── Tipos ──
+    const et=eventsByType(eventos);
+    const colorByEvent={enviado:C.am,clique:C.ol,resposta:C.nv,opt_out:C.cr,mensagem:C.pl};
+    paint('cTipo',{type:'bar',data:{labels:et.map(e=>e[0]),
+      datasets:[{data:et.map(e=>e[1]),backgroundColor:et.map(e=>colorByEvent[e[0]]||C.pl),borderRadius:6}]},
+      options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' eventos'}}},
+        scales:{y:{grid:{color:rule},beginAtZero:true},x:{grid:{display:false}}}}});
+
+    // ── Tempo ──
+    const eh=eventsByHour(eventos);
+    paint('cTempo',{type:'line',data:{labels:eh.map(e=>new Date(e[0]).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit'})+'h'),
+      datasets:[{data:eh.map(e=>e[1]),borderColor:C.cr,backgroundColor:'rgba(168,50,31,.08)',fill:true,tension:.3,pointRadius:2}]},
+      options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' eventos'}}},
+        scales:{y:{grid:{color:rule},beginAtZero:true},x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:8}}}}});
+
+    // ── Heatmap ──
+    renderHeat(eventos);
+
+    // ── Botões & respostas ──
+    const tb=topBotoes(eventos);
+    paint('cBotoes',{type:'bar',data:{labels:tb.length?tb.map(b=>b[0]):['—'],
+      datasets:[{data:tb.length?tb.map(b=>b[1]):[0],backgroundColor:C.ol,borderRadius:6}]},
+      options:{indexAxis:'y',plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:rule},beginAtZero:true},y:{grid:{display:false}}}}});
+
+    const tr=topRespostas(eventos);
+    paint('cRespostas',{type:'bar',data:{labels:tr.length?tr.map(b=>b[0]):['—'],
+      datasets:[{data:tr.length?tr.map(b=>b[1]):[0],backgroundColor:C.nv,borderRadius:6}]},
+      options:{indexAxis:'y',plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:rule},beginAtZero:true},y:{grid:{display:false}}}}});
+
+    // ── Tags ──
+    const tg=tagList(contatos);
+    paint('cTags',{type:'bar',data:{labels:tg.length?tg.map(t=>t[0]):['—'],
+      datasets:[{data:tg.length?tg.map(t=>t[1]):[0],backgroundColor:C.pl,borderRadius:6}]},
+      options:{indexAxis:'y',plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:rule},beginAtZero:true},y:{grid:{display:false}}}}});
+
+    // ── Status ──
+    const sd=statusDist(contatos);
+    const statusColors=[C.ol,C.am,C.faint,C.nv,C.pl,C.cr];
+    paint('cStatus',{type:'doughnut',data:{labels:sd.length?sd.map(s=>s[0]):['—'],
+      datasets:[{data:sd.length?sd.map(s=>s[1]):[1],backgroundColor:sd.map((s,i)=>statusColors[i%statusColors.length]),borderColor:'#fff',borderWidth:2}]},
+      options:{cutout:'58%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12}}}}});
+
+    // ── Tabelas ──
+    renderContatos();
+    renderQualificacao(contatos);
+    renderEventos();
+
+    document.getElementById('status').textContent='atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    showError(e.message);
+    document.getElementById('status').textContent='erro ao carregar';
+  }
+}
+
+// ─── EVENTS ────────────────────────────────────────────────────────────────
+document.getElementById('dClose').addEventListener('click',closeDrawer);
+document.getElementById('drawerOv').addEventListener('click',closeDrawer);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
+
+document.getElementById('tbContatos').addEventListener('click',e=>{
+  if(e.target.closest('a')) return;
+  const tr=e.target.closest('tr[data-sid]'); if(tr) openThread(tr.dataset.sid,tr.dataset.nome,tr.dataset.meta,tr.dataset.phone);
+});
+document.getElementById('tbQual').addEventListener('click',e=>{
+  const tr=e.target.closest('tr[data-sid]'); if(tr) openThread(tr.dataset.sid,tr.dataset.nome,tr.dataset.meta,tr.dataset.phone);
+});
+
+document.getElementById('tabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab'); if(!b)return;
+  STATE.aba=b.dataset.aba;
+  document.querySelectorAll('#tabs .tab').forEach(t=>t.classList.toggle('active',t===b));
+  load();
+});
+document.getElementById('segRange').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  STATE.range=b.dataset.range;
+  document.querySelectorAll('#segRange button').forEach(t=>t.classList.toggle('active',t===b));
+  load();
+});
+document.getElementById('segCt').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  STATE.contatoFilt=b.dataset.flt;
+  document.querySelectorAll('#segCt button').forEach(t=>t.classList.toggle('active',t===b));
+  renderContatos();
+});
+document.getElementById('qContatos').addEventListener('input',e=>{ STATE.search=e.target.value||''; renderContatos(); });
+document.getElementById('btnCsv').addEventListener('click',exportCsv);
+document.getElementById('btnRefresh').addEventListener('click',load);
+document.getElementById('selDisparo').addEventListener('change',e=>{ STATE.disparo=e.target.value; load(); });
+document.getElementById('chkAuto').addEventListener('change',e=>{
+  if(STATE.autoTimer){ clearInterval(STATE.autoTimer); STATE.autoTimer=null; }
+  if(e.target.checked){ STATE.autoTimer=setInterval(load,60000); }
+});
+
+(async()=>{ await loadDisparos(); await load(); })();
+</script>
+</body>
+</html>
