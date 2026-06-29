@@ -2,6 +2,10 @@
 
 Dashboard estático (single-file) para analisar a performance dos **disparos no WhatsApp via ManyChat** e das **primeiras mensagens inbound** dos leads.
 
+> 📘 **Docs operacionais**
+> - [`MANYCHAT_FLOW_BUILD.md`](./MANYCHAT_FLOW_BUILD.md) — passo-a-passo dentro do ManyChat para o disparo (recomendado começar por aqui).
+> - [`MANYCHAT_SETUP.md`](./MANYCHAT_SETUP.md) — referência de payloads, review do n8n, smoke test via curl.
+
 Dados consultados ao vivo no Supabase (REST, anon key), em três tabelas:
 
 | Tabela | Conteúdo |
