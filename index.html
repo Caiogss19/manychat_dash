@@ -149,9 +149,11 @@
     </div>
     <button id="btnRefresh">↻ Atualizar</button>
     <label class="switch"><input type="checkbox" id="chkAuto"> auto-refresh 60s</label>
+    <button id="btnDemo" class="ghost" title="Carrega dados fictícios para preview">▶ ver com dados demo</button>
     <span class="meta" id="status">carregando <span class="spin"></span></span>
   </div>
 
+  <div id="demoBanner"></div>
   <div id="errBox"></div>
 
   <hr>
@@ -351,7 +353,148 @@ function rangeStartISO(){
 }
 function waLink(phone){ if(!phone) return ''; return 'https://wa.me/'+String(phone).replace(/\D/g,''); }
 
+// ─── DEMO MODE ─────────────────────────────────────────────────────────────
+const DEMO_ENABLED = new URLSearchParams(location.search).has('demo');
+let DEMO_DATA = null;
+
+function buildDemoData(){
+  const now=Date.now(), day=86400e3;
+  const disparos=[
+    {disparo_id:'inbound_whatsapp',nome:'Inbound WhatsApp',canal:'whatsapp',criado_em:new Date(now-30*day).toISOString()},
+    {disparo_id:'lancamento_jun26',nome:'Lançamento Junho 2026',canal:'whatsapp',criado_em:new Date(now-14*day).toISOString()},
+    {disparo_id:'reativacao_q2',nome:'Reativação Q2',canal:'whatsapp',criado_em:new Date(now-7*day).toISOString()},
+  ];
+  const firstNames=['Caio','Ana','João','Maria','Pedro','Beatriz','Lucas','Júlia','Rafael','Camila','Felipe','Mariana','Gustavo','Larissa','Bruno','Carolina','Diego','Fernanda','Ricardo','Patrícia','Thiago','Amanda','Vinícius','Renata','Marcos','Letícia','Eduardo','Gabriela','André','Isabela','Rodrigo','Natália','Daniel','Bianca','Henrique','Tatiana','Leonardo','Vanessa','Matheus','Aline','Fábio','Daniela','Paulo','Cristina','Roberto','Carla','Sérgio','Mônica','Otávio','Luciana','Murilo','Helena','Igor','Sofia','Mateus','Yasmin','Arthur','Clara','Davi','Manuela','Enzo','Valentina','Bernardo','Cecília','Heitor','Alice','Theo','Lavínia','Miguel','Lara','Nicolas','Heloísa','Samuel','Antonella','Benjamin','Maitê','Lorenzo','Esther'];
+  const lastNames=['Silva','Santos','Oliveira','Souza','Lima','Pereira','Costa','Ferreira','Almeida','Rodrigues','Carvalho','Gomes','Martins','Rocha','Ribeiro','Nascimento','Mendes','Barbosa','Cardoso','Teixeira','Cavalcanti','Moreira','Araújo','Dias','Castro','Pinto','Moura','Vieira','Correia','Monteiro'];
+  const tagPool=['lead_quente','lead_morno','lead_frio','ja_falou','novo_contato','presente','rsvp_confirmado','vip','reengajamento','indicado','linkedin','instagram','interessado','aguardando_proposta','followup'];
+  const statusPool=['active','active','active','active','active','active','unsubscribed','inactive'];
+  const budgets=['até 10k','30k','50k','100k','100k+','sem budget definido'];
+  const positions=['CEO','Diretor','Diretor Comercial','Diretor de Marketing','Gerente','Analista','Coordenador','Sócio','Consultor'];
+  const sizes=['1-5 funcionários','5-10 funcionários','11-50 funcionários','51-200 funcionários','200+ funcionários','>500 funcionários'];
+  const buttons=['Quero saber mais','Agendar reunião','Ver preços','Tirar dúvidas','Falar com consultor','Não tenho interesse','Sair'];
+  const respostasLivres=['Tenho interesse sim','Pode ser','Manda mais info','Hoje não','Não tenho interesse','Quanto custa?','Como funciona?','Pode me ligar?','Topa marcar uma call?','vamos','sim','não','beleza','obrigado','depois te falo','interessante','vou pensar'];
+  const steps=['01_entrada','02_saudacao','03_qualificacao_budget','04_qualificacao_position','05_qualificacao_size','06_oferta','07_agendamento','08_proposta'];
+  const rnd=Math.random, ri=(a,b)=>a+Math.floor(rnd()*(b-a+1)), pick=a=>a[Math.floor(rnd()*a.length)];
+  const pickN=(a,n)=>{const c=[...a],o=[]; for(let i=0;i<n&&c.length;i++) o.push(c.splice(Math.floor(rnd()*c.length),1)[0]); return o;};
+  const contatos=[],eventos=[]; let eid=1;
+  disparos.forEach(disp=>{
+    const isInbound=disp.disparo_id==='inbound_whatsapp';
+    const N=isInbound?38:disp.disparo_id==='lancamento_jun26'?35:25;
+    for(let i=0;i<N;i++){
+      const sid=String(1000000000+Math.floor(rnd()*999999999));
+      const nome=pick(firstNames)+' '+pick(lastNames);
+      const phone='+5511'+String(ri(900000000,999999999));
+      const status=pick(statusPool);
+      const tags=pickN(tagPool,ri(1,4)).map((t,j)=>({id:80000000+j*1000+i,name:t}));
+      const fillCf=isInbound?rnd()<0.65:rnd()<0.30;
+      const cf=[];
+      if(fillCf){
+        cf.push({id:14601392,name:'budget',type:'text',value:pick(budgets),description:''});
+        if(rnd()<0.75) cf.push({id:14601390,name:'position',type:'text',value:pick(positions),description:''});
+        if(rnd()<0.6) cf.push({id:14601391,name:'company_size',type:'text',value:pick(sizes),description:''});
+      }
+      const r=rnd();
+      let prof;
+      if(isInbound){ prof = r<0.32?'alta':r<0.66?'media':r<0.93?'baixa':'opt'; }
+      else { prof = r<0.16?'alta':r<0.40?'media':r<0.55?'baixa':r<0.93?'silent':'opt'; }
+      const start=now - ri(1,isInbound?7:14)*day - ri(0,12)*3600e3;
+      let cursor=start;
+      const iniciou=isInbound?'lead':'bot';
+      let enviado=false,clicou=false,respondeu=false,optout=false,ultE=null,ultEm=null,primEm=null;
+      function pushE(evento,passo,direcao,extra){
+        primEm = primEm || new Date(cursor).toISOString();
+        ultE = evento; ultEm = new Date(cursor).toISOString();
+        eventos.push({id:'demo-e'+(eid++),criado_em:new Date(cursor).toISOString(),disparo_id:disp.disparo_id,subscriber_id:sid,phone,evento,passo,direcao,botao:extra.botao||'',resposta_texto:extra.resposta_texto||'',mensagem:extra.mensagem||''});
+      }
+      if(isInbound){
+        pushE('resposta','01_entrada','lead',{resposta_texto:'oi, vi o anúncio',mensagem:'oi, vi o anúncio'});
+        respondeu=true;
+        cursor+=ri(10,90)*1000;
+        pushE('enviado','02_saudacao','bot',{mensagem:'Oi! Sou da Spark Maxx, posso te ajudar?'});
+        enviado=true;
+      } else {
+        pushE('enviado','01_entrada','bot',{mensagem:'Olá '+nome.split(' ')[0]+'! Vimos seu interesse e queremos te mostrar como a Spark pode ajudar.'});
+        enviado=true;
+      }
+      const maxSteps={alta:6,media:4,baixa:2,silent:0,opt:1}[prof];
+      let idx=isInbound?2:1;
+      for(let st=0; st<maxSteps && idx<steps.length; st++){
+        cursor += ri(60, 30*60)*1000;
+        const passo=steps[idx];
+        if(rnd()<0.55 && idx<6){
+          pushE('enviado',passo,'bot',{mensagem:'Como prefere seguir?'});
+          cursor += ri(30,10*60)*1000;
+          pushE('clique',passo,'lead',{botao:pick(buttons.slice(0,5))});
+          clicou=true;
+        } else {
+          pushE('enviado',passo,'bot',{mensagem:'Pode me contar mais?'});
+          cursor += ri(30,20*60)*1000;
+          let resp;
+          if(passo.includes('budget')) resp=pick(budgets);
+          else if(passo.includes('position')) resp=pick(positions);
+          else if(passo.includes('size')) resp=pick(sizes);
+          else resp=pick(respostasLivres);
+          pushE('resposta',passo,'lead',{resposta_texto:resp,mensagem:resp});
+          respondeu=true;
+        }
+        idx++;
+      }
+      if(prof==='opt'){
+        cursor+=ri(60,5*60)*1000;
+        pushE('opt_out',steps[Math.min(idx,steps.length-1)],'lead',{mensagem:'Não tenho interesse, pode parar'});
+        optout=true;
+      }
+      contatos.push({subscriber_id:sid,disparo_id:disp.disparo_id,phone,nome,status,tags,custom_fields:cf,enviado,clicou,respondeu,optout,primeiro_evento_em:primEm,ultimo_evento:ultE,ultimo_evento_em:ultEm,iniciou_por:iniciou});
+    }
+  });
+  return {disparos,contatos,eventos};
+}
+
+function demoRest(path){
+  if(!DEMO_DATA) DEMO_DATA=buildDemoData();
+  const [table, qs] = path.split('?');
+  const params=new URLSearchParams(qs||'');
+  let rows;
+  if(table==='disparos') rows=DEMO_DATA.disparos;
+  else if(table==='disparo_contatos') rows=DEMO_DATA.contatos;
+  else if(table==='disparo_eventos') rows=DEMO_DATA.eventos;
+  else return Promise.resolve([]);
+  for(const [k,v] of params){
+    if(k==='select'||k==='order'||k==='limit') continue;
+    const m=String(v).match(/^(eq|gte|gt|lte|lt|neq)\.(.+)$/);
+    if(!m) continue;
+    const op=m[1], val=decodeURIComponent(m[2]);
+    rows=rows.filter(r=>{
+      const rv=r[k];
+      if(op==='eq')  return String(rv)===val;
+      if(op==='neq') return String(rv)!==val;
+      if(rv==null) return false;
+      const a=new Date(rv), b=new Date(val);
+      if(op==='gte') return a>=b;
+      if(op==='gt')  return a> b;
+      if(op==='lte') return a<=b;
+      if(op==='lt')  return a< b;
+      return true;
+    });
+  }
+  const order=params.get('order');
+  if(order){
+    const [col,dir]=order.split('.');
+    rows=[...rows].sort((a,b)=>{
+      const av=a[col], bv=b[col];
+      if(av==null) return 1;
+      if(bv==null) return -1;
+      const cmp = av<bv?-1:av>bv?1:0;
+      return dir==='desc'?-cmp:cmp;
+    });
+  }
+  const lim=params.get('limit');
+  if(lim) rows=rows.slice(0,parseInt(lim,10));
+  return Promise.resolve(rows);
+}
+
 async function rest(path){
+  if(DEMO_ENABLED) return demoRest(path);
   const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{cache:'no-store',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Cache-Control':'no-cache','Pragma':'no-cache'}});
   if(!r.ok) throw new Error(`${r.status} · ${await r.text()}`);
   return r.json();
@@ -800,6 +943,21 @@ document.getElementById('chkAuto').addEventListener('change',e=>{
   if(STATE.autoTimer){ clearInterval(STATE.autoTimer); STATE.autoTimer=null; }
   if(e.target.checked){ STATE.autoTimer=setInterval(load,60000); }
 });
+
+document.getElementById('btnDemo').addEventListener('click',()=>{
+  const u=new URL(location.href);
+  if(DEMO_ENABLED) u.searchParams.delete('demo'); else u.searchParams.set('demo','1');
+  location.href=u.toString();
+});
+
+if(DEMO_ENABLED){
+  const btn=document.getElementById('btnDemo');
+  btn.textContent='■ voltar para dados reais';
+  btn.classList.remove('ghost');
+  btn.classList.add('primary');
+  document.getElementById('demoBanner').innerHTML=
+    '<div class="callout" style="margin-top:18px;background:var(--amber-soft);border-color:#E8D2B4;border-left-color:var(--amber)"><b>Modo demo ativo.</b> Os dados abaixo são fictícios — 3 disparos, ~95 contatos e ~600 eventos gerados localmente. Nenhuma chamada vai pro Supabase. Clique em "voltar para dados reais" para sair.</div>';
+}
 
 (async()=>{ await loadDisparos(); await load(); })();
 </script>
