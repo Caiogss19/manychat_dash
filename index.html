@@ -73,6 +73,7 @@
   .p-resposta{background:var(--navy-soft);color:var(--navy)}
   .p-opt_out{background:var(--crimson-soft);color:var(--crimson)}
   .p-mensagem{background:var(--plum-soft);color:var(--plum)}
+  .p-transfer_humano{background:#E0F2EA;color:#1F6A47;border:1px solid #B7E0CA}
   .p-evento{background:var(--bg-soft);color:var(--ink-mute)}
   .scroll{max-height:420px;overflow-y:auto;border-radius:10px;border:1px solid var(--rule)}
   .scroll table{border:0}
@@ -166,10 +167,11 @@
     <div class="card a-cr"><span class="step">saída</span><div class="label">Opt-out</div><div class="val" id="kOptout">—</div><div class="rate" id="rOptout">—</div></div>
   </div>
 
-  <div class="grid three" style="margin-top:14px">
+  <div class="grid stages" style="margin-top:14px">
     <div class="card a-pl"><span class="step">∅</span><div class="label">Tempo médio até clique</div><div class="val" id="kTtc">—</div><div class="rate" id="rTtc">do envio ao 1º clique</div></div>
     <div class="card a-nv"><span class="step">∅</span><div class="label">Tempo médio até resposta</div><div class="val" id="kTtr">—</div><div class="rate" id="rTtr">do envio ao 1º texto</div></div>
     <div class="card a-ol"><span class="step">%</span><div class="label">Engajamento total</div><div class="val" id="kEng">—</div><div class="rate" id="rEng">clicou ou respondeu</div></div>
+    <div class="card a-ol" style="border-top-color:#1F6A47"><span class="step">→</span><div class="label">Transferidos p/ humano</div><div class="val" id="kTH">—</div><div class="rate" id="rTH">handoff para atendente</div></div>
   </div>
 
   <div class="grid two" style="margin-top:14px">
@@ -505,7 +507,7 @@ function showError(msg){
     `<div class="callout warn" style="margin-top:18px"><b>Não consegui carregar os dados.</b> ${esc(msg)}<br>Verifique se as tabelas existem no Supabase e se a leitura anônima está liberada.</div>`;
 }
 
-function labelEvento(ev){ return ({enviado:'mensagem enviada',clique:'clicou em botão',opt_out:'saiu / opt-out',mensagem:'mensagem',resposta:'resposta',evento:'evento'})[ev]||ev||'evento'; }
+function labelEvento(ev){ return ({enviado:'mensagem enviada',clique:'clicou em botão',opt_out:'saiu / opt-out',mensagem:'mensagem',resposta:'resposta',transfer_humano:'transferido p/ humano',evento:'evento'})[ev]||ev||'evento'; }
 
 // ─── DRAWER ────────────────────────────────────────────────────────────────
 function bubbleHtml(e){
@@ -558,7 +560,7 @@ function statusDist(contatos){
   return Object.entries(m).sort((a,b)=>b[1]-a[1]);
 }
 function eventsByType(eventos){
-  const order=['enviado','clique','resposta','opt_out','mensagem'];
+  const order=['enviado','clique','resposta','transfer_humano','opt_out','mensagem'];
   const m={};
   eventos.forEach(e=>{ const k=e.evento||'evento'; m[k]=(m[k]||0)+1; });
   const keys=[...new Set([...order.filter(k=>m[k]),...Object.keys(m).filter(k=>!order.includes(k))])];
@@ -814,6 +816,10 @@ async function load(){
     document.getElementById('kEng').textContent= pct(eng,tot)+'%';
     document.getElementById('rEng').innerHTML=`<b>${eng}</b> de ${tot} contatos`;
 
+    const transferSubs=new Set(eventos.filter(e=>e.evento==='transfer_humano').map(e=>e.subscriber_id));
+    document.getElementById('kTH').textContent=transferSubs.size;
+    document.getElementById('rTH').innerHTML=`<b>${pct(transferSubs.size,enviados)}%</b> dos enviados`;
+
     document.getElementById('funnelMeta').textContent = since ? `desde ${fmtDate(since)}` : 'janela: tudo';
 
     // ── Funnel ──
@@ -849,7 +855,7 @@ async function load(){
 
     // ── Tipos ──
     const et=eventsByType(eventos);
-    const colorByEvent={enviado:C.am,clique:C.ol,resposta:C.nv,opt_out:C.cr,mensagem:C.pl};
+    const colorByEvent={enviado:C.am,clique:C.ol,resposta:C.nv,opt_out:C.cr,mensagem:C.pl,transfer_humano:'#1F6A47'};
     paint('cTipo',{type:'bar',data:{labels:et.map(e=>e[0]),
       datasets:[{data:et.map(e=>e[1]),backgroundColor:et.map(e=>colorByEvent[e[0]]||C.pl),borderRadius:6}]},
       options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' eventos'}}},
