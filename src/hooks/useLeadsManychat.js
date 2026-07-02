@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { supabase, missingEnv } from '../lib/supabase.js'
 import { TABLES } from '../lib/queries.js'
 import { daysAgoISOInstant } from '../lib/format.js'
 
@@ -35,6 +35,15 @@ export function useLeadsManychat(filters) {
   const alive = useRef(true)
 
   const run = useCallback(async () => {
+    if (missingEnv || !supabase) {
+      setState({
+        rows: [],
+        count: 0,
+        error: new Error('Env VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY não estão configuradas.'),
+        loading: false,
+      })
+      return
+    }
     setState((s) => ({ ...s, loading: true, error: null }))
     let q = supabase.from(TABLES.leadsManychat).select(SELECT, { count: 'exact' })
 

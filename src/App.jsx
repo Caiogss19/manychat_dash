@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { ErrorBoundary } from './components/ErrorBoundary.jsx'
+import { ConfigMissing } from './components/ConfigMissing.jsx'
+import { missingEnv } from './lib/supabase.js'
 import { MetricCard } from './components/MetricCard.jsx'
 import { ChartCard } from './components/ChartCard.jsx'
 import { LeadsTable } from './components/LeadsTable.jsx'
@@ -24,6 +27,21 @@ import { fmtInt } from './lib/format.js'
 const RANGE_TO_DAYS = { '7d': 7, '30d': 30, '90d': 90, all: null }
 
 export default function App() {
+  if (missingEnv) {
+    return (
+      <ErrorBoundary>
+        <ConfigMissing />
+      </ErrorBoundary>
+    )
+  }
+  return (
+    <ErrorBoundary>
+      <Dashboard />
+    </ErrorBoundary>
+  )
+}
+
+function Dashboard() {
   const [range, setRange] = useState('30d')
   const [dimensao, setDimensao] = useState('budget')
   const days = RANGE_TO_DAYS[range] ?? null

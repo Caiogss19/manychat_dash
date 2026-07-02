@@ -91,14 +91,27 @@ Aplicado só nos gráficos por dia (`leads_dia`, `msgs_dia`) e na tabela de lead
 
 As views de data já vêm agrupadas por dia — o filtro roda no cliente (não faz round-trip).
 
-## Deploy estático
+## Deploy na Vercel
+
+1. **Import project** (aponta pra este repo).
+2. Framework Preset é detectado automaticamente como **Vite** (o `vercel.json` no repo já força isso).
+3. **Settings → Environment Variables**, adicionar nos ambientes **Production** e **Preview**:
+   - `VITE_SUPABASE_URL` — URL do seu projeto Supabase
+   - `VITE_SUPABASE_ANON_KEY` — anon key
+4. **Redeploy**.
+
+> ⚠️ **Vite embute `VITE_*` env vars no build**. Se você adicionar depois do primeiro deploy, precisa **Redeploy** pra as vars entrarem. Se a tela vier em branco, geralmente é isso.
+>
+> A dash não quebra silenciosamente: se qualquer uma das duas env vars faltar, mostra uma tela **`Configuração pendente`** listando o que está faltando + instrução de como corrigir. Qualquer outro crash cai no **`ErrorBoundary`** que renderiza a mensagem crua + stack.
+
+## Deploy em outros hosts
 
 ```bash
 npm run build
-# dist/ pronta pra qualquer host estático
+# dist/ pronta pra Netlify, Cloudflare Pages, GitHub Pages, S3+CloudFront, etc.
 ```
 
-Vercel / Netlify / Cloudflare Pages / GitHub Pages funcionam direto — só configure as duas env vars no painel do host.
+Só configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no painel do host antes do build.
 
 ## Docs operacionais (mantidos do projeto anterior)
 
