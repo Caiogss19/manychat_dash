@@ -13,6 +13,9 @@ export const VIEWS = {
 export const TABLES = {
   leadsManychat: 'leads_manychat',
   disparoEventos: 'disparo_eventos',
+  chatwootContacts: 'chatwoot_contacts',
+  chatwootConversations: 'chatwoot_conversations',
+  chatwootMessages: 'chatwoot_messages',
 }
 
 // Dimensões suportadas por vw_qual_distribuicao

@@ -102,7 +102,10 @@ export function LeadsTable() {
                     {open ? (
                       <tr className="border-b border-rule bg-plane/50">
                         <td colSpan={9} className="px-4 py-3">
-                          <LeadTimeline subscriberId={l.manychat_subscriber_id} />
+                          <LeadTimeline
+                            subscriberId={l.manychat_subscriber_id}
+                            telefone={l.telefone}
+                          />
                         </td>
                       </tr>
                     ) : null}
